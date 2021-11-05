@@ -1,8 +1,5 @@
 # coding=utf-8
 import random
-import requests
-from urllib.parse import urlencode
-import json
 
 # UA_list
 product = ['Mozilla/5.0']

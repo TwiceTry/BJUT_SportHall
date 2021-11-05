@@ -3,7 +3,7 @@ import json
 import re
 import time
 import random
-import Useragent
+import Useragent  # 我自己写的，请把这个Useragent文件与本文件放于同一目录
 from urllib.parse import quote
 from threading import Timer
 

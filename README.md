@@ -1,6 +1,8 @@
 # BJUT_SportHall
 A python3 program used to make an appointment for fixed time.
 ## 适用于北京工业大学 运动场地 小程序
+sport.py 主要功能
+Useragent.py 生成随机User-agent 字符串
 ## 使用条件
 Python3 with requests
 ## 用法

@@ -10,8 +10,8 @@ from threading import Timer
 class SportHall(object):
     host_url = "http://wechartdemo.zckx.net"
     openid = "" # 请填入一个openid, 只用来获取信息的id，不用来提交预约, 不填程序无法运行
-    stime=9
-    etime=21
+    stime=9     # 每天预约开始时间，日后有变化可以修改
+    etime=21    # 每天不可提交预约时间，在这个时间运行程序，程序会等到第二天可以预约的时候再开始
     # 任务字典的列表，type, keyword
     #               string, Hall, 运动场地名 
     #               string, target_date, 预约的日期，可使用 YYYY-MM-DD 格式 也可以用相对天数，不可为0，-1为默认为最新那天

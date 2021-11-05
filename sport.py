@@ -15,7 +15,7 @@ class SportHall(object):
     # 任务字典的列表，type, keyword
     #               string, Hall, 运动场地名 
     #               string, target_date, 预约的日期，可使用 YYYY-MM-DD 格式 也可以用相对天数，不可为0，-1为默认为最新那天
-    #               list, target_time, 预约起始时间的小时，HH格式, string类型的list
+    #               list, target_time, 预约起始时间的小时，HH格式, 元素string类型的list
     #               string, openid, 提交预约的id，就是实际预约的账号
     task_list=[
                 # 示例

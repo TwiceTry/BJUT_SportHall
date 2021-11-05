@@ -6,8 +6,8 @@ Useragent.py 生成随机User-agent 字符串
 ## 使用条件
 Python3 with requests
 ## 获取openid
-使用http抓包工具（windows:fiddler，andriod:HttpCanary），记录微信打开 运动场地 小程序 时的url请求
-找到http://wechartdemo.zckx.net/?openid=XXXXXXXXXXXXX
+使用http抓包工具（windows:fiddler，andriod:HttpCanary），记录微信打开 运动场地 小程序 时的url请求  
+找到http://wechartdemo.zckx.net/?openid=XXXXXXXXXXXXX  
 openid=后面就是要用的字符串
 ## 用法
 按sport.py文件中提示修改添加openid,task_list

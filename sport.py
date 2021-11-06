@@ -3,14 +3,14 @@ import json
 import re
 import time
 import random
-import Useragent  # 我自己写的，请把这个Useragent文件与本文件放于同一目录
+import Useragent     # 我自己写的，请把这个Useragent.py文件与本文件放于同一目录
 from urllib.parse import quote
 from threading import Timer
 
 class SportHall(object):
     host_url = "http://wechartdemo.zckx.net"
     openid = "" # 请填入一个openid, 只用来获取信息的id，不用来提交预约, 不填程序无法运行
-    stime=9     # 每天预约开始时间，日后有变化可以修改
+    stime=7     # 每天预约开始时间，日后有变化可以修改
     etime=21    # 每天不可提交预约时间，在这个时间运行程序，程序会等到第二天可以预约的时候再开始
     # 任务字典的列表，type, keyword
     #               string, Hall, 运动场地名 
@@ -80,8 +80,9 @@ class SportHall(object):
         if self.kind == '':
             if len(dict_info['list']) == 0:
                 return False
-            if dict_info['list'][0]['isCanReserve'] and dict_info['list'][0]['restCount']:
-                alvi_list.append(dict_info['list'][0])
+            for  i in dict_info['list']:
+                if i['isCanReserve'] and i['restCount']:
+                    alvi_list.append(i)
         else:
             for hour in dict_info:
                 for place in hour['items']:
@@ -205,15 +206,15 @@ class SportHall(object):
             re_list=[]
             for i in line_dict.values():
                 if len(i) == len(target_time):
-                    re_list.append(i)
+                    re_list=i
                     break
             if not len(re_list):
                 for i in line_dict.values():
                     if len(i) == len(target_time)-1 and len(i)>0:
-                        re_list.append(i)
+                        re_list=i
                         break
         if len(re_list):
-            return {'Hall':Hall,'date':avali_time_info['date'],'List':re_list[0]}
+            return {'Hall':Hall,'date':avali_time_info['date'],'List':re_list}
         else:
             return False
     @classmethod
@@ -221,9 +222,9 @@ class SportHall(object):
         find_time_dict = cls.find_time(Hall.time_info(day), target_time=target_time)
         if find_time_dict:
             re_list=[]
-            for book_time in find_time_dict:
+            for book_time in find_time_dict['List']:
                 result = cls.book_it(find_time_dict['date'], find_time_dict['Hall'], book_time,openid)
-                re_list.append((find_time_dict['date'], find_time_dict['Hall'], book_time))
+                re_list.append((result))
             return re_list
         else:
             print("没有目标时间")
@@ -244,11 +245,7 @@ class SportHall(object):
         print(time.asctime(time.localtime(target)),'target time',)
         Halls_dict = cls.get_Hallinfo_fromhome()
         while time.time() <= target:
-            sec=target-time.time()
-            if sec>30:
-                time.sleep(sec/2)
-            else:
-                time.sleep(1)
+            time.sleep(1)
         print(time.asctime(),"到点了",)
         re_list = []
         tlist=[]

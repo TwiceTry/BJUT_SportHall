@@ -6,7 +6,7 @@ Useragent.py 生成随机User-agent 字符串
 ## 使用条件
 Python3 with requests
 ## 获取openid
-使用http抓包工具（windows:fiddler，andriod:HttpCanary），记录微信打开 运动场地 小程序 时的url请求  
+使用http抓包工具（windows:Fiddler，andriod:HttpCanary），记录微信打开 运动场地 小程序 时的url请求  
 ![Snipaste_2021-11-05_21-17-08](https://user-images.githubusercontent.com/87631193/140518458-e486fa78-3613-429c-8ac3-625ed6c9c7f3.png)
 
 找到http://wechartdemo.zckx.net/?openid=XXXXXXXXXXXXX  

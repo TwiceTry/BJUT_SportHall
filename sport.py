@@ -3,13 +3,13 @@ import json
 import re
 import time
 import random
-import Useragent     # 我自己写的，请把这个Useragent.py文件与本文件放于同一目录
+import Useragent
 from urllib.parse import quote
 from threading import Timer
 
 class SportHall(object):
     host_url = "http://wechartdemo.zckx.net"
-    openid = "" # 请填入一个openid, 只用来获取信息的id，不用来提交预约, 不填程序无法运行
+    openid = "" # 用来获取信息的id
     stime=7     # 每天预约开始时间，日后有变化可以修改
     etime=21    # 每天不可提交预约时间，在这个时间运行程序，程序会等到第二天可以预约的时候再开始
     # 任务字典的列表，type, keyword
@@ -173,7 +173,14 @@ class SportHall(object):
         }
         fake_header = {'User-Agent': Useragent.random_one()}
         res = requests.post(url=cls.host_url+"/Ticket/SaveOrder",data=post_data,headers=fake_header)
-        if "成功" in json.loads(res.text)["Message"]:
+        
+        try:
+            res_dict=json.loads(res.text)
+        except:
+            with open('error.txt', 'w') as f:
+                f.write(res.text)
+            return False
+        if "成功" in res_dict["Message"]:
             return True
         else:
             return False
@@ -221,18 +228,18 @@ class SportHall(object):
     def book_task(cls, Hall,target_time,openid, day=-1):
         find_time_dict = cls.find_time(Hall.time_info(day), target_time=target_time)
         if find_time_dict:
-            re_list=[]
+            re_list1=[]
             for book_time in find_time_dict['List']:
                 result = cls.book_it(find_time_dict['date'], find_time_dict['Hall'], book_time,openid)
-                re_list.append((result))
-            return re_list
+                re_list1.append(result)
+            return re_list1
         else:
-            print("没有目标时间")
             return False
     @classmethod
     def run(cls):
-        def task(relist,f,*args, **kwargs):
-            relist.append(f(*args, **kwargs))
+        def task(relist,func,*args, **kwargs):
+            res=func(*args, **kwargs)
+            relist.append({'finish_time':time.asctime(),"para":str(args)+''+str(kwargs),"result":res,})
 
         if time.localtime().tm_hour >= cls.etime:
             now=list(tuple(time.localtime(time.time()+23*3600)))
@@ -245,7 +252,11 @@ class SportHall(object):
         print(time.asctime(time.localtime(target)),'target time',)
         Halls_dict = cls.get_Hallinfo_fromhome()
         while time.time() <= target:
-            time.sleep(1)
+            sec=target-time.time()
+            if sec>30:
+                time.sleep(sec/2)
+            else:
+                time.sleep(1)
         print(time.asctime(),"到点了",)
         re_list = []
         tlist=[]
@@ -264,14 +275,15 @@ class SportHall(object):
                     i['target_date']=day
             else:
                 i['target_date']=int(i['target_date'])
-            t=Timer(0,task,(re_list,cls.book_task,Halls_dict[i['Hall']],i['target_time'],i['openid']), {"day":i['target_date']})
+            t=Timer(0,task,(re_list,cls.book_task,Halls_dict[i['Hall']],i['target_time'],i['openid'],i['target_date']))#, {"day":i['target_date']})
             tlist.append(t)
         for i in tlist:
             i.start()
-            print(i.args[2:],i.kwargs)
         while len(re_list)!=len(cls.task_list):
             time.sleep(2)
-        print(re_list)
+        for i in re_list:
+            print(i)
+        print(time.asctime(), "执行结束", )
         return re_list
 
 

@@ -7,9 +7,11 @@ import Useragent
 from urllib.parse import quote
 from threading import Timer
 
+
 class SportHall(object):
     host_url = "http://wechartdemo.zckx.net"
-    openid = "" # 用来获取信息的id
+    Halls_dict={} # 场馆字典 key场馆名字字符串 value 场馆SportHall实例
+    openid = "" # 用来获取信息的openid   基础功能必须 
     stime=7     # 每天预约开始时间，日后有变化可以修改
     etime=21    # 每天不可提交预约时间，在这个时间运行程序，程序会等到第二天可以预约的时候再开始
     # 任务字典的列表，type, keyword
@@ -23,19 +25,28 @@ class SportHall(object):
                 #{'Hall':"羽毛球馆",'target_date':"2021-11-10", 'target_time':['13','14',],'openid':'预约的openid'},
                 
                ]
-    #
+    # 任务结果列表
+    result_task_list = []
+    if openid == '':    #如未填写类属性的openid 则自动获取任务列表里第一个可用的openid
+        for i in task_list:
+            if i['openid'] != '':
+                openid = i['openid'] 
+                break
+
     def __repr__(self):
         return self.name
-    def __init__(self,dict_info={'id':'','kind':'','name':'','time':''},openid=''):
+
+    def __init__(self, dict_info={'id': '', 'kind': '', 'name': '', 'time': ''}, openid=''):
         self.__dict__.update(dict_info)
-        self.fake_header={'Usser-Agent':Useragent.random_one()}
+        self.fake_header = {'Usser-Agent': Useragent.random_one()}
         if openid != '':
-            self.openid= openid
-        self.place=None
-        self.body=self.getbody()
-        self.datelimit=self.getdatelimit()
+            self.openid = openid
+        self.place = None
+        self.body = self.getbody()
+        self.datelimit = self.getdatelimit()
+
     def url(self):
-        projectNo= self.id
+        projectNo = self.id
         if self.kind == '':
             reserveUrl = "Ticket"
         else:
@@ -43,108 +54,114 @@ class SportHall(object):
 
         l_url = self.host_url + "/Ticket/" + reserveUrl + "?projectNo=" + projectNo + "&openId=" + self.openid
         return l_url
+
     def getbody(self):
-        res = requests.get(url=self.url(),headers=self.fake_header)
-        res.encoding="utf-8"
+        res = requests.get(url=self.url(), headers=self.fake_header)
+        res.encoding = "utf-8"
         if self.kind == '':
             pass
         else:
-            place = re.findall(r'{&quot;STYLENAME&quot;:&quot;(\d+号(?:场地|球台))&quot;,&quot;STYLENO&quot;:(\d+)}',res.text)
-            self.place=place
+            place = re.findall(r'{&quot;STYLENAME&quot;:&quot;(\d+号(?:场地|球台))&quot;,&quot;STYLENO&quot;:(\d+)}',
+                               res.text)
+            self.place = place
         return res.text
+
     def getdatelimit(self):
-        re_match = re.search(r'dayLimit = \"([\d])\";',self.body)
+        re_match = re.search(r'dayLimit = \"([\d])\";', self.body)
         return int(re_match.groups()[0])
-    def time_info(self,day=-1):
-        if day <0:
+
+    def time_info(self, day=-1):
+        if day < 0:
             day = self.datelimit
         if day > self.datelimit:
-            print("maxdata "+str(self.datelimit))
-            day=self.datelimit
-        re_match = re.findall(r"params\.data\.([\w]+) = [\"\']?([\d\w\_\,]+)[\"\']?;",self.body)
-        re1=[]
-        re2=[]
+            day = self.datelimit
+        re_match = re.findall(r"params\.data\.([\w]+) = [\"\']?([\d\w\_\,]+)[\"\']?;", self.body)
+        re1 = []
+        re2 = []
         for i in re_match:
             re1.append(i[0])
             re2.append(i[1])
-        re_match=dict(zip(re1,re2))
+        re_match = dict(zip(re1, re2))
         re_match.popitem()
-        post_data =re_match
-        date=time.strftime("%Y-%m-%d",time.localtime(time.time()+day*3600*24))
-        post_data['date']= date
-        res= requests.post(url=self.host_url+"/API/TicketHandler.ashx",data=post_data,headers=self.fake_header)
-        res.encoding='utf-8'
+        post_data = re_match
+        date = time.strftime("%Y-%m-%d", time.localtime(time.time() + day * 3600 * 24))
+        post_data['date'] = date
+        res = requests.post(url=self.host_url + "/API/TicketHandler.ashx", data=post_data, headers=self.fake_header)
+        res.encoding = 'utf-8'
         dict_info = json.loads(res.text)
-        alvi_list=[]
-        
+        alvi_list = []
+
         if self.kind == '':
             if len(dict_info['list']) == 0:
                 return False
-            for  i in dict_info['list']:
+            for i in dict_info['list']:
                 if i['isCanReserve'] and i['restCount']:
                     alvi_list.append(i)
         else:
             for hour in dict_info:
                 for place in hour['items']:
-                    if set(place.values()) != {0,'0'}:
+                    if set(place.values()) != {0, '0'}:
                         alvi_list.append(place)
             if len(alvi_list) == 0:
                 return False
-        return {'Hall':self,'date':date,'List':alvi_list}
+        return {'Hall': self, 'date': date, 'List': alvi_list}
 
     @classmethod
-    def home_page(cls,openid = ''):
+    def home_page(cls, openid=''):
         if openid == '':
             openid = cls.openid
         fake_header = {'User-Agent': Useragent.random_one()}
-        res = requests.get(url=cls.host_url+"/?openid="+openid,headers=fake_header)
-        res.encoding='utf-8'
+        res = requests.get(url=cls.host_url + "/?openid=" + openid, headers=fake_header)
+        res.encoding = 'utf-8'
         return res.text
 
     @classmethod
-    def get_Hallinfo_fromhome(cls,html_text='',openid = ''):
-        if html_text =='':
+    def get_Hallinfo_fromhome(cls, html_text='', openid=''):
+        if html_text == '':
             if openid == '':
-                openid=cls.openid
+                openid = cls.openid
             html_text = cls.home_page(openid)
 
-        re_match = re.findall(r'<div  class="style_info_right" onclick="goToReserve\((\d+),\'(\w*)\'\)">\s+<h3>([\u4E00-\u9FFF]+)</h3>\s+<h2><span class="spanD">(开放时间：[\d\:\-]+)</span></h2>',html_text.replace('\n',''))
-        Halls_dict=[]
-        re_list={}
+        re_match = re.findall(
+            r'<div  class="style_info_right" onclick="goToReserve\((\d+),\'(\w*)\'\)">\s+<h3>([\u4E00-\u9FFF]+)</h3>\s+<h2><span class="spanD">(开放时间：[\d\:\-]+)</span></h2>',
+            html_text.replace('\n', ''))
+        Halls_dict = []
+        re_list = {}
         for i in re_match:
-            Halls_dict.append({'id':i[0],'kind':i[1],'name':i[2],'time':i[3]})
+            Halls_dict.append({'id': i[0], 'kind': i[1], 'name': i[2], 'time': i[3]})
         for i in Halls_dict:
-            Hall=SportHall(i)
-            re_list.update({Hall.name:Hall})
+            Hall = SportHall(i)
+            re_list.update({Hall.name: Hall})
         return re_list
 
     @classmethod
-    def get_user_info(cls,openid=''):
-        if openid=='':
+    def get_user_info(cls, openid=''):
+        if openid == '':
             openid = cls.openid
         fake_header = {'User-Agent': Useragent.random_one()}
-        info_url= cls.host_url+"/Ticket/MySelf_Info?openId="+openid
-        res=requests.get(url=info_url,headers=fake_header)
-        name = re.search(r"value=\"([\u4E00-\u9FFF]+)\"",res.text)
-        phone_num = re.search(r"value=\"(\d{11})\"",res.text)
-        people_id = re.search(r"value=\"(\d{17}\d|X)\"",res.text)
-        compus_id = re.search(r"id=\"txtYKT\_No\" value=\"([SB]?\d{8,9})\"",res.text)
-        return {'userName':name.group(1),"userPhone":phone_num.group(1),"userIdentityNo":people_id.group(1),"compus_id":compus_id.group(1)}
+        info_url = cls.host_url + "/Ticket/MySelf_Info?openId=" + openid
+        res = requests.get(url=info_url, headers=fake_header)
+        name = re.search(r"value=\"([\u4E00-\u9FFF]+)\"", res.text)
+        phone_num = re.search(r"value=\"(\d{11})\"", res.text)
+        people_id = re.search(r"value=\"(\d{17}\d|X)\"", res.text)
+        compus_id = re.search(r"id=\"txtYKT\_No\" value=\"([SB]?\d{8,9})\"", res.text)
+        return {'userName': name.group(1), "userPhone": phone_num.group(1), "userIdentityNo": people_id.group(1),
+                "compus_id": compus_id.group(1)}
 
     @classmethod
-    def book_it(cls,date,Hall,time_dict,openid):
-        re_match=re.search(r"var styleInfo\s=\s{(\r\n\s*\w+:\s'?[\w\d.]*'?,)+",Hall.body)
-        re_match=re.findall(r"\r\n\s*(\w+):\s'?([\w\d.]*)'?,",re_match.group())
-        styleInfolist =[{}]
+    def book_it(cls, date, Hall, time_dict, openid):
+        re_match = re.search(r"var styleInfo\s=\s{(\r\n\s*\w+:\s'?[\w\d.]*'?,)+", Hall.body)
+        re_match = re.findall(r"\r\n\s*(\w+):\s'?([\w\d.]*)'?,", re_match.group())
+        styleInfolist = [{}]
         for i in re_match:
-            styleInfolist[0][i[0]]=i[1]
-        if styleInfolist[0]['styleNo']=='styleNo':
-            styleInfolist[0]['styleNo']=time_dict['styNo']
-        styleInfolist[0]['ticketNum']=1
-        if Hall.kind!='':
-            timelist=[{
-                "minDate": time_dict["beginH"]+":00",
-                "maxDate": str(int(time_dict["beginH"])+1)+":00",
+            styleInfolist[0][i[0]] = i[1]
+        if styleInfolist[0]['styleNo'] == 'styleNo':
+            styleInfolist[0]['styleNo'] = time_dict['styNo']
+        styleInfolist[0]['ticketNum'] = 1
+        if Hall.kind != '':
+            timelist = [{
+                "minDate": time_dict["beginH"] + ":00",
+                "maxDate": str(int(time_dict["beginH"]) + 1) + ":00",
                 "strategy": time_dict['strId']
             }]
         else:
@@ -153,13 +170,13 @@ class SportHall(object):
                 "maxDate": time_dict['eTime'],
                 "strategy": time_dict['id']
             }]
-        user_info=cls.get_user_info(openid)
+        user_info = cls.get_user_info(openid)
         user_info.popitem()
         user_info['userName'] = quote(user_info['userName'])
-        userInfoList= [user_info]
-        post_data={
-            "dataType":"json",
-            "orderJson":str(
+        userInfoList = [user_info]
+        post_data = {
+            "dataType": "json",
+            "orderJson": str(
                 {
                     "userDate": date,
                     "timeList": timelist,
@@ -172,27 +189,33 @@ class SportHall(object):
             )
         }
         fake_header = {'User-Agent': Useragent.random_one()}
-        res = requests.post(url=cls.host_url+"/Ticket/SaveOrder",data=post_data,headers=fake_header)
-        
-        try:
-            res_dict=json.loads(res.text)
-        except:
-            with open('error.txt', 'w') as f:
-                f.write(res.text)
-            return False
-        if "成功" in res_dict["Message"]:
+
+        for i in range(5):
+            res = requests.post(url=cls.host_url + "/Ticket/SaveOrder", data=post_data, headers=fake_header)
+            try:
+                res_dict = json.loads(res.text)
+                with open('sport_res.log', 'a') as f:   # 预约请求日志文件
+                    f.write(time.asctime())
+                    f.write(str(time_dict))
+                    f.write(res.text)
+                    f.write('\n')
+            except:
+                res_dict = False
+                continue
+            break
+        if res_dict and "成功" in res_dict["Message"]:
             return True
         else:
             return False
 
     @staticmethod
-    def find_time(avali_time_info,target_time=['18']):
+    def find_time(avali_time_info, target_time=['18']):
         if not avali_time_info:
             return False
         re_list = []
-        Hall=avali_time_info['Hall']
+        Hall = avali_time_info['Hall']
         for i in avali_time_info['List']:
-            if Hall.kind =='':
+            if Hall.kind == '':
                 key_hour = 'sTime'
             else:
                 key_hour = 'beginH'
@@ -202,89 +225,95 @@ class SportHall(object):
         if Hall.kind == '':
             pass
         else:
-            line_dict={}
+            line_dict = {}
             line = set('')
             for i in re_list:
                 line.add(i['styNo'])
             for i in list(line):
-                line_dict[i]=[]
+                line_dict[i] = []
             for i in re_list:
                 line_dict[i['styNo']].append(i)
-            re_list=[]
+            re_list = []
             for i in line_dict.values():
                 if len(i) == len(target_time):
-                    re_list=i
+                    re_list = i
                     break
             if not len(re_list):
                 for i in line_dict.values():
-                    if len(i) == len(target_time)-1 and len(i)>0:
-                        re_list=i
+                    if len(i) == len(target_time) - 1 and len(i) > 0:
+                        re_list = i
                         break
         if len(re_list):
-            return {'Hall':Hall,'date':avali_time_info['date'],'List':re_list}
+            return {'Hall': Hall, 'date': avali_time_info['date'], 'List': re_list}
         else:
             return False
+
     @classmethod
-    def book_task(cls, Hall,target_time,openid, day=-1):
+    def book_task(cls, task_dict):
+        Hall = cls.Halls_dict[task_dict['Hall']]
+        target_time = task_dict['target_time']
+        openid = task_dict['openid']
+        if len(task_dict['target_date']) == 10:
+            now = time.time()
+            time_tuple = list(tuple(time.localtime(now)))
+            time_tuple[0] = int(task_dict['target_date'][0:4])
+            time_tuple[1] = int(task_dict['target_date'][5:7])
+            time_tuple[2] = int(task_dict['target_date'][8:10])
+            target = time.mktime(tuple(time_tuple))
+            day = round((target - now) / (24 * 3600))
+        else:
+            day = int(task_dict['target_date'])
+        if day == 0:
+            return "预约今天的可能来不及"
+        elif day > Hall.datelimit:
+            return "超过最远预约天数"
+
         find_time_dict = cls.find_time(Hall.time_info(day), target_time=target_time)
         if find_time_dict:
-            re_list1=[]
+            re_list1 = []
             for book_time in find_time_dict['List']:
-                result = cls.book_it(find_time_dict['date'], find_time_dict['Hall'], book_time,openid)
+                result = cls.book_it(find_time_dict['date'], find_time_dict['Hall'], book_time, openid)
                 re_list1.append(result)
             return re_list1
         else:
             return False
+
+    @staticmethod
+    def doandback(back_list, func, *args, **kwargs):
+        btime = time.time()
+        res = func(*args, **kwargs)
+        back_list.append({'begin_time': time.asctime(time.localtime(btime)), 'finish_time': time.asctime(),
+                       "para": str(args) + '' + str(kwargs), "result": res, })
+
     @classmethod
     def run(cls):
-        def task(relist,func,*args, **kwargs):
-            res=func(*args, **kwargs)
-            relist.append({'finish_time':time.asctime(),"para":str(args)+''+str(kwargs),"result":res,})
-
         if time.localtime().tm_hour >= cls.etime:
-            now=list(tuple(time.localtime(time.time()+23*3600)))
+            now = list(tuple(time.localtime(time.time() + 23 * 3600)))
         else:
-            now=list(tuple(time.localtime()))
-        now[3]=cls.stime
-        now[4]=0
-        now[5]=0
-        target=time.mktime(tuple(now))
-        print(time.asctime(time.localtime(target)),'target time',)
-        Halls_dict = cls.get_Hallinfo_fromhome()
+            now = list(tuple(time.localtime()))
+        now[3] = cls.stime
+        now[4] = 0
+        now[5] = 0
+        target = time.mktime(tuple(now))
+        print(time.asctime(time.localtime(target)), 'target time', )
+        cls.Halls_dict = cls.get_Hallinfo_fromhome()
         while time.time() <= target:
-            sec=target-time.time()
-            if sec>30:
-                time.sleep(sec/2)
+            sec = target - time.time()
+            if sec > 30:
+                time.sleep(sec / 2)
             else:
                 time.sleep(1)
-        print(time.asctime(),"到点了",)
-        re_list = []
-        tlist=[]
+        print(time.asctime(), "到点了", )
+        tlist = []
         for i in cls.task_list:
-            if len(i['target_date']) ==10:
-                now=time.time()
-                time_tuple=list(tuple(time.localtime(now)))
-                time_tuple[0]=int(i['target_date'][0:4])
-                time_tuple[1]=int(i['target_date'][5:7])
-                time_tuple[2]=int(i['target_date'][8:10])
-                target=time.mktime(tuple(time_tuple))
-                day=round((target-now)/(24*3600))
-                if day ==0:
-                    print("预约今天的可能来不及")
-                else:
-                    i['target_date']=day
-            else:
-                i['target_date']=int(i['target_date'])
-            t=Timer(0,task,(re_list,cls.book_task,Halls_dict[i['Hall']],i['target_time'],i['openid'],i['target_date']))#, {"day":i['target_date']})
+            t = Timer(0, cls.doandback, (cls.result_task_list, cls.book_task, i)) # , {"day":i['target_date']})
             tlist.append(t)
-        for i in tlist:
-            i.start()
-        while len(re_list)!=len(cls.task_list):
-            time.sleep(2)
-        for i in re_list:
+            t.start()
+        while len(cls.result_task_list) != len(tlist):
+            time.sleep(1)
+        for i in cls.result_task_list:
             print(i)
         print(time.asctime(), "执行结束", )
-        return re_list
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ Python3 with requests
 ## 获取openid
 使用http抓包工具（windows:Fiddler，andriod:HttpCanary），记录微信打开 运动场地 小程序 时的url请求  
 ![Snipaste_2021-11-05_21-17-08](https://user-images.githubusercontent.com/87631193/140518458-e486fa78-3613-429c-8ac3-625ed6c9c7f3.png)
+![动画](https://user-images.githubusercontent.com/87631193/155502387-bea7d6c8-6a84-4a3a-9c24-3d04ed4b95a6.gif)
 
 找到http://wechartdemo.zckx.net/?openid=XXXXXXXXXXXXX  
 openid=后面就是要用的字符串

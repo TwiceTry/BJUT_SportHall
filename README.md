@@ -13,14 +13,15 @@ Python3 with requests
 找到http://wechartdemo.zckx.net/?openid=XXXXXXXXXXXXX  
 openid=后面就是要用的字符串
 ## 用法
-按sport.py文件中提示修改添加openid,task_list
- #### 任务字典的列表，type, keyword
-    #             string, Hall, 运动场地名 
-    #             string, target_date, 预约的日期，可使用 YYYY-MM-DD 格式 也可以用相对天数，不可为0，-1为默认为最新那天
-    #             list, target_time, 预约起始时间的小时，HH格式, 元素为string类型的list
-    #             string, openid, 提交预约的id，就是实际预约的账号
-运行后，会等到设置的时间开始预约
-返回结果后程序结束
+task.json 中填入任务	<br/>
+| 关键字 | type | keyword |
+| :-----| ----: | :----: |
+| string |Hall| 运动场地名 |
+|string| target_date | 预约的日期，可使用 YYYY-MM-DD 格式 也可以用相对天数，不可为0，-1为默认为最新那天 |
+| list | target_time | 预约起始时间的小时，HH格式, 元素为string类型的list |
+| string | openid | 提交预约的id，就是实际预约的账号 |
+
+ 运行后，会等到设置的时间开始预约,返回结果后程序结束
 ## 其他用法
 ##### linux 定时任务 
 可以设置每天早上开始预约前一分钟运行

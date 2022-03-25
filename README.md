@@ -14,7 +14,7 @@ Python3 with requests
 openid=后面就是要用的字符串
 ## 用法
 task.json 中填入任务	<br/>
-| 关键字 | type | keyword |
+| type  | keyword | |
 | :-----| ----: | :----: |
 | string |Hall| 运动场地名 |
 |string| target_date | 预约的日期，可使用 YYYY-MM-DD 格式 也可以用相对天数，不可为0，-1为默认为最新那天 |

@@ -23,7 +23,7 @@ class Task(object):
     def taskDict(self):
         for i in self.__taskDict.keys():
             item = self.__getattribute__(i)
-            if isinstance(item, (typing.Dict,typing.List,typing.Tuple,str,int,float,bool)) or item is None:
+            if not isinstance(item, (typing.Dict,typing.List,typing.Tuple,str,int,float,bool)) or item is None:
                 self.__taskDict[i]=str(item)
             else:
                 self.__taskDict[i] = item

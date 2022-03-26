@@ -9,7 +9,6 @@ import Useragent
 from urllib.parse import quote
 from threading import Timer
 
-start = time.time()
 
 class SportUser(object):
     host_url = "http://wechartdemo.zckx.net"
@@ -320,7 +319,7 @@ if __name__ == "__main__":
     from prebook import Task, TaskOnTime
     aa=TaskOnTime()
 
-    #@aa.preDeal
+    @aa.preDeal
     def prdo():
         for i in SportHall.get_Halls():
             i.body

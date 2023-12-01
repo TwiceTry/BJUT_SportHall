@@ -1,8 +1,11 @@
 [
   {
-    "Hall": "体育馆健身房",
-    "target_date": "-1",
-    "target_time": "['14']",
-    "openid": "请填入你openid"
+    "Hall": "羽毛球馆",
+    "target_date": "2023-12-06",
+    "target_time": [
+      18,
+      19
+    ],
+    "openid": "oSkwT5XNsodPT_J9NgdFAuTHhnRo"
   }
 ]

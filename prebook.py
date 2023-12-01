@@ -9,13 +9,14 @@ import functools
 from threading import Timer
 import typing
 
+
 class Task(object):
     def __init__(self, info_dict: dict):
         self.taskDict = info_dict
         self.result = {}
 
     def __eq__(self, other):
-        if not isinstance(other,Task):
+        if not isinstance(other, Task):
             return False
         return True if self.__dict__ == other.__dict__ else False
 
@@ -23,8 +24,8 @@ class Task(object):
     def taskDict(self):
         for i in self.__taskDict.keys():
             item = self.__getattribute__(i)
-            if not isinstance(item, (typing.Dict,typing.List,typing.Tuple,str,int,float,bool)) or item is None:
-                self.__taskDict[i]=str(item)
+            if not isinstance(item, (typing.Dict, typing.List, typing.Tuple, str, int, float, bool)) or item is None:
+                self.__taskDict[i] = str(item)
             else:
                 self.__taskDict[i] = item
         return self.__taskDict
@@ -46,26 +47,32 @@ class Task(object):
     def __repr__(self):
         return str({"Task": self.taskDict, "Result": self.result})
 
-T = typing.TypeVar('T',typing.Dict,Task)
+
+T = typing.TypeVar('T', typing.Dict, Task)
+
 
 class TaskOnTime(object):
-    def __init__(self, stime: tuple = (), etime: tuple = () , task_file_path='task.json'):
+    def __init__(self, stime: tuple = (), etime: tuple = (), task_file_path='task.json'):
         self.log = None
         self.__tasklist = []
         self.setLogger()
         if len(stime) < 9:
-            self.stime = (0, 0, 0, 7, 5, 0, 0, 1, 0)  # 预约开始时间，日后有变化可以修改
+            self.stime = (0, 0, 0, 7,0 , 0, 0, 1, 0)  # 预约开始时间，日后有变化可以修改
+        else:
+            self.stime = stime
         if len(etime) < 9:
-            self.etime = (0, 0, 0, 21, 30, 0, 0, 1, 0)  # 不可提交预约时间，在这个时间运行程序，程序会等到第二个预约周期再开始
+            # 不可提交预约时间，在这个时间运行程序，程序会等到第二个预约周期再开始
+            self.etime = (0, 0, 0, 21, 30, 0, 0, 1, 0)
+        else:
+            self.etime = etime
         self.task_file_path = task_file_path
         self.readTask()
-        self.timestep=3
-
+        self.timestep = 3
 
     def __del__(self):
         self.writeTask()
 
-    def readTask(self)->int:
+    def readTask(self) -> int:
         task_path = pathlib.Path(self.task_file_path)
         if not task_path.exists():
             task_path.write_text("[]")
@@ -81,11 +88,11 @@ class TaskOnTime(object):
         self.__tasklist = task_list
         return len(task_list)
 
-    def addTask(self,dict_Task:T)->bool:
-        if isinstance(dict_Task,typing.Dict):
+    def addTask(self, dict_Task: T) -> bool:
+        if isinstance(dict_Task, typing.Dict):
             if not dict_Task in self.listTask():
-                dict_Task=Task(dict_Task)
-        if isinstance(dict_Task,Task):
+                dict_Task = Task(dict_Task)
+        if isinstance(dict_Task, Task):
             if not dict_Task in self.__tasklist:
                 self.__tasklist.append(dict_Task)
             else:
@@ -94,38 +101,36 @@ class TaskOnTime(object):
             return False
         return True
 
-    def delTask(self,dict_Task:Task)->bool:
+    def delTask(self, dict_Task: Task) -> bool:
         self.__tasklist.remove(Task)
-        if dict_Task in  self.__tasklist:
+        if dict_Task in self.__tasklist:
             return False
         else:
             return True
 
-    def listTask(self)->list:
-        temp_list=[]
+    def listTask(self) -> list:
+        temp_list = []
         for i in self.__tasklist:
             temp_list.append(i.taskDict)
         return temp_list
 
     def writeTask(self, temp_task_file_path='new_task.json'):
         temp_task_path = pathlib.Path(temp_task_file_path)
-        body=self.listTask()
+        body = self.listTask()
         for i in body:
             break
-            i['active']=False
+            i['active'] = False
             for k in ['place']:
                 if k not in i.keys():
-                    i[k]=False
+                    i[k] = False
         try:
-            json.dump(body,temp_task_path.open('w',encoding='utf-8'),ensure_ascii=False,indent=2)
+            json.dump(body, temp_task_path.open(
+                'w', encoding='utf-8'), ensure_ascii=False, indent=2)
         except:
             return
         task_path = pathlib.Path(self.task_file_path)
         task_path.unlink()
         temp_task_path.rename(self.task_file_path)
-
-
-
 
     def setLogger(self, *args, **kwargs):
         self.log = log.getlogger(*args, **kwargs)
@@ -173,29 +178,33 @@ class TaskOnTime(object):
                 return name
         return self.__class__.__name__
 
-    def __ifsetfunc(self,func):
+    def __ifsetfunc(self, func):
         if func == None:
-            self.log.warning("PLease use "+self.__getobjname()+"."+inspect.stack()[1][3] + " decorator")
+            self.log.warning("PLease use "+self.__getobjname() +
+                             "."+inspect.stack()[1][3] + " decorator")
             # sys.exit()
             return False
         return True
 
     def preDeal(self, func=None):
+        tasklist = self.__tasklist
         if func is None:
-            self.log.info("You could use "+self.__getobjname()+"."+str(inspect.stack()[0][3]) + " decorator")
+            self.log.info("You could use "+self.__getobjname() +
+                          "."+str(inspect.stack()[0][3]) + " decorator")
             return
         self.__ifsetfunc(func)
 
         @functools.wraps(func)
-        def reback(*args,**kwargs):
-            back=func(*args,**kwargs)
+        def reback(*args, **kwargs):
+            back = func(tasklist,*args, **kwargs)
             return back
-        self.__setattr__(sys._getframe().f_code.co_name,reback)
+        self.__setattr__(sys._getframe().f_code.co_name, reback)
         # self.preDeal=reback
         return reback
 
     def doTask(self, func=None):  # 装饰函数 只有一个参数，Task对象
-        tasklist=self.__tasklist
+        tasklist = self.__tasklist
+
         @functools.wraps(func)
         def Multithreading():
             if not self.__ifsetfunc(func):
@@ -217,21 +226,22 @@ class TaskOnTime(object):
             for i in tasklist:
                 self.log.info(i)
             return True
-        self.__setattr__(sys._getframe().f_code.co_name,Multithreading)
+        self.__setattr__(sys._getframe().f_code.co_name, Multithreading)
         return Multithreading
 
     def afterDone(self, func=None):
         if func is None:
-            self.log.info("You could use "+self.__getobjname()+"."+str(inspect.stack()[0][3]) + " decorator")
+            self.log.info("You could use "+self.__getobjname() +
+                          "."+str(inspect.stack()[0][3]) + " decorator")
             return
         print(func)
         self.__ifsetfunc(func)
 
         @functools.wraps(func)
-        def reback(*args,**kwargs):
-            back=func(*args,**kwargs)
+        def reback(*args, **kwargs):
+            back = func(*args, **kwargs)
             return back
-        self.__setattr__(sys._getframe().f_code.co_name,reback)
+        self.__setattr__(sys._getframe().f_code.co_name, reback)
         # self.preDeal=reback
         return reback
 
@@ -243,7 +253,8 @@ class TaskOnTime(object):
 
     def __runit(self):
         start_timestamp, end_timestamp = self.mkTargetTime()
-        self.log.info('预约开始时间： ' + time.asctime(time.localtime(start_timestamp)))
+        self.log.info(
+            '预约开始时间： ' + time.asctime(time.localtime(start_timestamp)))
         self.timeBlock(start_timestamp-60*5)
         self.preDeal()
         self.timeBlock(start_timestamp)
@@ -254,5 +265,3 @@ class TaskOnTime(object):
 
     def run(self):
         self.__runit()
-
-

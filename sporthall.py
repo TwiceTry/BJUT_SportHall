@@ -8,7 +8,6 @@ import typing
 import inspect
 import pathlib
 
-from threading import Timer
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
@@ -23,7 +22,7 @@ fiddler_proxy = {
 }
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
-requests.proxies.update(fiddler_proxy)
+# requests.proxies.update(fiddler_proxy)
 
 class SportUser(object):
     openidCollect: typing.Set['SportUser'] = set([])
@@ -117,13 +116,29 @@ class SportHall:
         return None
 
     @classmethod
-    def testOrder(cls) -> bool:
+    def getNewOrderId(cls)->str:
+        testOpenId:SportUser=random.choice(list(SportUser.openidCollect))
         gymHall = cls.getHallByName('体育馆健身房')  # 不限流，故可测试是否开放预约
         target_date = gymHall.day2date(-1)
 
-        target_date_time_info = gymHall.timeInfo(target_date)
+        target_date_time_info = gymHall.getValidTimeInfo(target_date)
+        filterList = gymHall.filterTimeInfo([12,],target_date_time_info)
 
-        gymHall.bootIt()
+        testTimeItem = random.choice(filterList)
+        try:
+            res=gymHall.bootIt(target_date,testTimeItem,testOpenId.info)
+        except:
+            return ''
+        if res['result']:
+            testOpenId.cancelBook(res['book_id'])
+            return res['book_id']
+        else:
+            return ''
+
+    @classmethod
+    def testOrder(cls) -> bool:
+        return bool(cls.getNewOrderId())
+
 
     def __post_init__(self):
         self.dayPlaceTime: dict = {}
@@ -348,20 +363,29 @@ class SportHall:
 
 
 def bookTask(task):
+
     if isinstance(task.openid, str):
         task.openid = SportUser(task.openid)
     if task.openid not in SportUser.openidCollect:
         SportUser.openidCollect.add(task.openid)
     if isinstance(task.Hall, str):
         task.Hall = SportHall.getHallByName(task.Hall)
-    
+        
+    res_list = []
+    testTimes = 5
+    for i  in range(testTimes):
+        res = SportHall.testOrder()
+        if res:
+            break
+    if i == testTimes-1:
+        res_list.append(f'testTimes is {i}')
+
     # if int(task.target_date) != -1:
     task.target_date = task.Hall.day2date(task.target_date)
 
     timeInfo = task.Hall.getValidTimeInfo(task.target_date)
 
     a = task.Hall.filterTimeInfo(task.target_time,timeInfo )
-    res_list = []
     if len(a):
         res = task.Hall.bootIt(task.target_date,a[0],task.openid.info,result_list=res_list)
 

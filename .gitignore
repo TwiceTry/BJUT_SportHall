@@ -3,5 +3,7 @@
 index.html
 **/log.txt
 /test
-test.py
+test_main.py
 task.json
+task.json.bak
+order.json

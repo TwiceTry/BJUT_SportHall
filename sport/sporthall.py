@@ -6,26 +6,33 @@ import time
 import random
 import typing
 import inspect
-import pathlib
 
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
-import Useragent
+import utils.Useragent as Useragent
+
+from utils.log import HTMLFileStorage
+
+# 匹配中文字符和常见标点符号的正则表达式
+chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\u2022"
 
 host: str = "http://wechartdemo.zckx.net"
-
+# 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
+test_openid:str = "test openid"
 # 设置 Fiddler 的代理地址和端口（默认端口为 8888）
 fiddler_proxy = {
-"http": "http://192.168.5.201:8888",
-"https": "http://192.168.5.201:8888",
+    "http": "http://192.168.5.155:8888",
+    "https": "http://192.168.5.155:8888",
 }
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
-# requests.proxies.update(fiddler_proxy)
+requests.proxies.update(fiddler_proxy)
+
 
 class SportUser(object):
     openidCollect: typing.Set['SportUser'] = set([])
+    htmlFileSave = HTMLFileStorage('html/order')
 
     def __init__(self, openid: str):
         self.openid = openid
@@ -51,7 +58,9 @@ class SportUser(object):
     def getMyOrder(self):
         fake_header = {'User-Agent': Useragent.random_one()}
         res = requests.get(
-            url=host+"t/Ticket/MyOrder?openId="+self.openid, headers=fake_header)
+            url=host+"/Ticket/MyOrder?openId="+self.openid, headers=fake_header)
+        htmlFileSave.save_html(f'myorder__{self.openid[-8:]}.html', res.text)
+        return res.text
 
     def cancelBook(self, orderNo):
         res = requests.post(url=host+"/Ticket/CancleOrder", data={"dataType": "json", "orderNo": str(orderNo)},
@@ -70,12 +79,51 @@ class SportUser(object):
         return {'openid': self.openid, 'userName': name.group(1), "userPhone": phone_num.group(1),
                 "userIdentityNo": people_id.group(1), "compus_id": compus_id.group(1)}
 
+    @classmethod
+    def getOrderInfo(cls, OrderId: str) -> dict:
+        htmlFileName = f'order_{OrderId}.html'
+        html_text = cls.htmlFileSave.get_html(htmlFileName)
+        if not html_text:
+            fake_header = {'User-Agent': Useragent.random_one()}
+            info_url = host + f"/Ticket/Myticketinfo_N?orderNo={OrderId}"
+            res = requests.get(url=info_url, headers=fake_header)
+            html_text = res.text
+            cls.htmlFileSave.save_html(htmlFileName, html_text)
+        info = {}
+        orderSportHall = re.search(
+            fr'<!--预约时段-->\s+<div class="orderInfo_title2">\s+<h2>([\d{chinesePattern}]+)</h2>\s+</div>', html_text)
+        if orderSportHall:
+            info['Hall'] = orderSportHall.group(1)
+        else:
+            return info
+
+        orderTitle = re.search(
+            fr'<div class="orderInfo_title">\s+<p>\s+<span class="sp1">([{chinesePattern}]*)</span>\s+<span class="sp3">￥([\d\.]+)</span>\s+<span class="sp2">([{chinesePattern}]+)</span>\s+</p>\s+<div class="clear"></div>\s+</div>', html_text)
+        # True if orderTitle.group(1) == '已取消' else False
+        info['isCancelled'] = True if orderTitle.group(1) == '已取消' else False
+        orderIsUsed = re.search(
+            fr'<div class="orderInfo_title_time">\s+<p>([{chinesePattern}]+)</p>\s+</div>', html_text)
+        # True if '已使用' in orderIsUsed.group(1) else False
+        info['isUsed'] = True if '已使用' in orderIsUsed.group(1) else False
+        
+        orderDate = re.search(r'<td width="30%"><b>使用日期</b></td>\s+<td>\s+<p>(\d{4}-\d{2}-\d{2})</p>\s+</td>', html_text)
+        info['useDate'] = orderDate.group(1)
+        orderUserName = re.search(
+            fr'<td width="30%"><b>出游人 1</b></td>\s+<td>\s+<p>([\&amp\;\#183\;{chinesePattern}\d\s\w]*)</p>\s+</td>', html_text)
+        info['userName'] = orderUserName.group(1)
+        orderUserPhoneNum = re.search(
+            r"<td><b>手机号</b></td>\s+<td>\s+<p>([\d\*]+)</p>\s+</td>", html_text)
+        info['phoneNum'] = orderUserPhoneNum.group(1)
+        orderUserId = re.search(r"<td><b>身份证</b></td>\s+<td>\s+<p>([DT\w\d\*X]+)</p>\s+</td>", html_text)
+        info['id'] = orderUserId.group(1)
+        return info
 
 
 day_type = typing.TypeVar('day_type', int, str)
 
 
 Halls: typing.List['SportHall'] = []
+htmlFileSave = HTMLFileStorage('html')
 
 
 @dataclass
@@ -105,7 +153,9 @@ class SportHall:
             if newone not in Halls:
                 Halls.append(newone)
         return Halls.copy()
-
+    
+    testOpenId: SportUser = SportUser(test_openid)
+        
     @classmethod
     def getHallByName(cls, name: str) -> typing.Union['SportHall', None]:
         if not len(Halls):
@@ -116,21 +166,20 @@ class SportHall:
         return None
 
     @classmethod
-    def getNewOrderId(cls)->str:
-        testOpenId:SportUser=random.choice(list(SportUser.openidCollect))
+    def getNewOrderId(cls) -> str:
         gymHall = cls.getHallByName('体育馆健身房')  # 不限流，故可测试是否开放预约
         target_date = gymHall.day2date(-1)
 
         target_date_time_info = gymHall.getValidTimeInfo(target_date)
-        filterList = gymHall.filterTimeInfo([12,],target_date_time_info)
+        filterList = gymHall.filterTimeInfo([12,], target_date_time_info)
 
         testTimeItem = random.choice(filterList)
         try:
-            res=gymHall.bootIt(target_date,testTimeItem,testOpenId.info)
+            res = gymHall.bootIt(target_date, testTimeItem, cls.testOpenId.info)
         except:
             return ''
         if res['result']:
-            testOpenId.cancelBook(res['book_id'])
+            cls.testOpenId.cancelBook(res['book_id'])
             return res['book_id']
         else:
             return ''
@@ -138,7 +187,6 @@ class SportHall:
     @classmethod
     def testOrder(cls) -> bool:
         return bool(cls.getNewOrderId())
-
 
     def __post_init__(self):
         self.dayPlaceTime: dict = {}
@@ -152,19 +200,14 @@ class SportHall:
     def __str__(self):
         return self.name
 
-    @staticmethod
-    def getOpenid() -> SportUser:
-        openidList = list(SportUser.openidCollect)
-        id_len = len(openidList)
-        return (openidList[random.randint(0, id_len - 1)] if id_len > 1 else openidList[0]) if id_len else SportUser('')
-
+    
     @property
     def url(self) -> str:
         address = "SportHallsKO"
         if self.reserveUrl == '':
             address = "Ticket"
         l_url = host + "/Ticket/" + address + \
-            "?projectNo=" + self.projectNo + "&openId=" + self.getOpenid()
+            "?projectNo=" + self.projectNo + "&openId=" + self.testOpenId
         return l_url
 
     @property
@@ -200,7 +243,8 @@ class SportHall:
             self.hours = hours
 
         self.__setattr__(name, res.text)
-        saveFile = f'html/{self.name}.html'
+        saveFileName = f'{self.name}.html'
+        htmlFileSave.save_html(saveFileName, res.text)
 
         return res.text
 
@@ -252,7 +296,7 @@ class SportHall:
 
         return dict_info
 
-    def getValidTimeInfo(self, day: day_type, f5=False)->typing.List[dict]:
+    def getValidTimeInfo(self, day: day_type, f5=False) -> typing.List[dict]:
         dict_info = self.getTimeInfo(day=day, f5=f5)
 
         valid_list = []
@@ -268,7 +312,7 @@ class SportHall:
 
         return valid_list
 
-    def filterTimeInfo(self, targetHours: typing.List[day_type], timeInfo:typing.List[dict])->typing.List[typing.List[dict]]:
+    def filterTimeInfo(self, targetHours: typing.List[day_type], timeInfo: typing.List[dict]) -> typing.List[typing.List[dict]]:
         a = []
         targetHours = [str(i) for i in targetHours]
         target_date_time_info = timeInfo
@@ -333,16 +377,15 @@ class SportHall:
         post_data = {
             "dataType": "json",
             "orderJson": json.dumps({
-                    "userDate": self.day2date(target_date),
-                    "timeList": timelist,
-                    "totalprice": 0,
-                    "styleInfoList": styleInfolist,
-                    "userInfoList": userInfoList,
-                    "openId": userInfo['openid'],
-                    "sellerNo": "weixin",
-                })
+                "userDate": self.day2date(target_date),
+                "timeList": timelist,
+                "totalprice": 0,
+                "styleInfoList": styleInfolist,
+                "userInfoList": userInfoList,
+                "openId": userInfo['openid'],
+                "sellerNo": "weixin",
+            })
         }
-        
 
         res = requests.post(url=host + "/Ticket/SaveOrder", data=post_data,
                             headers={'User-Agent': Useragent.random_one()}, timeout=(3, 3)
@@ -370,43 +413,22 @@ def bookTask(task):
         SportUser.openidCollect.add(task.openid)
     if isinstance(task.Hall, str):
         task.Hall = SportHall.getHallByName(task.Hall)
-        
+
     res_list = []
     testTimes = 5
-    for i  in range(testTimes):
+    for i in range(testTimes):
         res = SportHall.testOrder()
         if res:
             break
     if i == testTimes-1:
         res_list.append(f'testTimes is {i}')
 
-    # if int(task.target_date) != -1:
-    task.target_date = task.Hall.day2date(task.target_date)
 
     timeInfo = task.Hall.getValidTimeInfo(task.target_date)
 
-    a = task.Hall.filterTimeInfo(task.target_time,timeInfo )
+    a = task.Hall.filterTimeInfo(task.target_time, timeInfo)
     if len(a):
-        res = task.Hall.bootIt(task.target_date,a[0],task.openid.info,result_list=res_list)
-
+        res = task.Hall.bootIt(
+            task.target_date, random.choice(a), task.openid.info, result_list=res_list)
 
     task.result = res_list
-
-
-if __name__ == "__main__":
-    from prebook import Task, TaskOnTime
-    aa = TaskOnTime(etime=(0, 0, 0, 21, 30, 0, 0, 1, 0))
-
-    @aa.preDeal
-    def prdo(tasklist):
-        for task in tasklist:
-            SportUser.openidCollect.add(SportUser(task.openid))
-            task.Hall = SportHall.getHallByName(task.Hall)
-            task.Hall.body
-
-    @aa.afterDone
-    def afterdo():
-        pass
-
-    aa.doTask(bookTask)
-    aa.run()

@@ -4,7 +4,7 @@ import inspect
 import json
 import time
 import pathlib
-import log
+import utils.log as log
 import functools
 from threading import Timer
 import typing
@@ -57,7 +57,7 @@ class TaskOnTime(object):
         self.__tasklist = []
         self.setLogger()
         if len(stime) < 9:
-            self.stime = (0, 0, 0, 7,0 , 0, 0, 1, 0)  # 预约开始时间，日后有变化可以修改
+            self.stime = (0, 0, 0, 7, 0, 0, 0, 1, 0)  # 预约开始时间，日后有变化可以修改
         else:
             self.stime = stime
         if len(etime) < 9:
@@ -196,7 +196,7 @@ class TaskOnTime(object):
 
         @functools.wraps(func)
         def reback(*args, **kwargs):
-            back = func(tasklist,*args, **kwargs)
+            back = func(tasklist, *args, **kwargs)
             return back
         self.__setattr__(sys._getframe().f_code.co_name, reback)
         # self.preDeal=reback
@@ -234,7 +234,6 @@ class TaskOnTime(object):
             self.log.info("You could use "+self.__getobjname() +
                           "."+str(inspect.stack()[0][3]) + " decorator")
             return
-        print(func)
         self.__ifsetfunc(func)
 
         @functools.wraps(func)

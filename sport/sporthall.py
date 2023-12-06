@@ -20,15 +20,9 @@ chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\u
 host: str = "http://wechartdemo.zckx.net"
 # 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
 test_openid:str = "test openid"
-# 设置 Fiddler 的代理地址和端口（默认端口为 8888）
-fiddler_proxy = {
-    "http": "http://192.168.5.155:8888",
-    "https": "http://192.168.5.155:8888",
-}
+
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
-requests.proxies.update(fiddler_proxy)
-
 
 class SportUser(object):
     openidCollect: typing.Set['SportUser'] = set([])

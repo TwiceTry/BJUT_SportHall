@@ -19,10 +19,11 @@ chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\u
 
 host: str = "http://wechartdemo.zckx.net"
 # 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
-test_openid:str = "test openid"
+test_openid: str = ""
 
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
+
 
 class SportUser(object):
     openidCollect: typing.Set['SportUser'] = set([])
@@ -99,8 +100,9 @@ class SportUser(object):
             fr'<div class="orderInfo_title_time">\s+<p>([{chinesePattern}]+)</p>\s+</div>', html_text)
         # True if '已使用' in orderIsUsed.group(1) else False
         info['isUsed'] = True if '已使用' in orderIsUsed.group(1) else False
-        
-        orderDate = re.search(r'<td width="30%"><b>使用日期</b></td>\s+<td>\s+<p>(\d{4}-\d{2}-\d{2})</p>\s+</td>', html_text)
+
+        orderDate = re.search(
+            r'<td width="30%"><b>使用日期</b></td>\s+<td>\s+<p>(\d{4}-\d{2}-\d{2})</p>\s+</td>', html_text)
         info['useDate'] = orderDate.group(1)
         orderUserName = re.search(
             fr'<td width="30%"><b>出游人 1</b></td>\s+<td>\s+<p>([\&amp\;\#183\;{chinesePattern}\d\s\w]*)</p>\s+</td>', html_text)
@@ -108,7 +110,8 @@ class SportUser(object):
         orderUserPhoneNum = re.search(
             r"<td><b>手机号</b></td>\s+<td>\s+<p>([\d\*]+)</p>\s+</td>", html_text)
         info['phoneNum'] = orderUserPhoneNum.group(1)
-        orderUserId = re.search(r"<td><b>身份证</b></td>\s+<td>\s+<p>([DT\w\d\*X]+)</p>\s+</td>", html_text)
+        orderUserId = re.search(
+            r"<td><b>身份证</b></td>\s+<td>\s+<p>([DT\w\d\*X]+)</p>\s+</td>", html_text)
         info['id'] = orderUserId.group(1)
         return info
 
@@ -137,7 +140,7 @@ class SportHall:
         re_str = r'<div class="style_info_right" onclick="goToReserve\((\d+),\'(\w*)\'\)">\s+<h3>([\u4E00-\u9FFF（）]+)</h3>\s+<h2><span class="spanD">(开放时间[\d：\:\-]+)</span></h2>'
         re_match = re.findall(re_str, res.text)
         for i in re_match:
-            if i[2] not in ['羽毛球馆', '体育馆健身房', '乒乓球馆']:
+            if i[2] not in ['羽毛球馆', '体育馆健身房', '乒乓球馆', '游泳馆']:
                 continue
             newone: 'SportHall' = cls(i[2],  # name
                                       i[0],  # projectNo
@@ -147,9 +150,9 @@ class SportHall:
             if newone not in Halls:
                 Halls.append(newone)
         return Halls.copy()
-    
+
     testOpenId: SportUser = SportUser(test_openid)
-        
+
     @classmethod
     def getHallByName(cls, name: str) -> typing.Union['SportHall', None]:
         if not len(Halls):
@@ -161,15 +164,20 @@ class SportHall:
 
     @classmethod
     def getNewOrderId(cls) -> str:
-        gymHall = cls.getHallByName('体育馆健身房')  # 不限流，故可测试是否开放预约
-        target_date = gymHall.day2date(-1)
+        gymList = ['乒乓球馆', '体育馆健身房',  '游泳馆']
+        target_date_time_info = []
+        while len(target_date_time_info) == 0 and len(gymList) != 0:
+            gymHall = cls.getHallByName(gymList.pop(0))
+            target_date = gymHall.day2date(-1)
+            target_date_time_info = gymHall.getValidTimeInfo(target_date)
 
-        target_date_time_info = gymHall.getValidTimeInfo(target_date)
-        filterList = gymHall.filterTimeInfo([12,], target_date_time_info)
+        if len(target_date_time_info) == 0:
+            return ''
 
-        testTimeItem = random.choice(filterList)
+        testTimeItem = [random.choice(target_date_time_info)]
         try:
-            res = gymHall.bootIt(target_date, testTimeItem, cls.testOpenId.info)
+            res = gymHall.bootIt(
+                target_date, testTimeItem, cls.testOpenId.info)
         except:
             return ''
         if res['result']:
@@ -194,7 +202,6 @@ class SportHall:
     def __str__(self):
         return self.name
 
-    
     @property
     def url(self) -> str:
         address = "SportHallsKO"
@@ -249,9 +256,7 @@ class SportHall:
 
     def day2date(self, day: day_type) -> str:
         if isinstance(day, str):
-            if day == "-1":
-                day = -1
-            elif re.match(r"^\d{1,2}$", day):
+            if re.match(r"^\-?\d{1,2}$", day):
                 day = int(day)
             else:
                 day_tuple = time.strptime(day, "%Y-%m-%d")
@@ -416,7 +421,6 @@ def bookTask(task):
             break
     if i == testTimes-1:
         res_list.append(f'testTimes is {i}')
-
 
     timeInfo = task.Hall.getValidTimeInfo(task.target_date)
 

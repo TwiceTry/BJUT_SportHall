@@ -19,7 +19,7 @@ chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\u
 
 host: str = "http://wechartdemo.zckx.net"
 # 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
-test_openid: str = ""
+test_openid: str = "test opnid"
 
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
@@ -76,14 +76,16 @@ class SportUser(object):
 
     @classmethod
     def getOrderInfo(cls, OrderId: str) -> dict:
-        htmlFileName = f'order_{OrderId}.html'
-        html_text = cls.htmlFileSave.get_html(htmlFileName)
+        html_text = cls.htmlFileSave.get_html(OrderId)
+        fileOrHttp = True
+
         if not html_text:
             fake_header = {'User-Agent': Useragent.random_one()}
             info_url = host + f"/Ticket/Myticketinfo_N?orderNo={OrderId}"
             res = requests.get(url=info_url, headers=fake_header)
             html_text = res.text
-            cls.htmlFileSave.save_html(htmlFileName, html_text)
+            fileOrHttp = False
+
         info = {}
         orderSportHall = re.search(
             fr'<!--预约时段-->\s+<div class="orderInfo_title2">\s+<h2>([\d{chinesePattern}]+)</h2>\s+</div>', html_text)
@@ -105,7 +107,7 @@ class SportUser(object):
             r'<td width="30%"><b>使用日期</b></td>\s+<td>\s+<p>(\d{4}-\d{2}-\d{2})</p>\s+</td>', html_text)
         info['useDate'] = orderDate.group(1)
         orderUserName = re.search(
-            fr'<td width="30%"><b>出游人 1</b></td>\s+<td>\s+<p>([\&amp\;\#183\;{chinesePattern}\d\s\w]*)</p>\s+</td>', html_text)
+            fr'<td width="30%"><b>出游人 1</b></td>\s+<td>\s+<p>([\&amp\;\#183\;{chinesePattern}\.\d\s\w]*)</p>\s+</td>', html_text)
         info['userName'] = orderUserName.group(1)
         orderUserPhoneNum = re.search(
             r"<td><b>手机号</b></td>\s+<td>\s+<p>([\d\*]+)</p>\s+</td>", html_text)
@@ -113,6 +115,9 @@ class SportUser(object):
         orderUserId = re.search(
             r"<td><b>身份证</b></td>\s+<td>\s+<p>([DT\w\d\*X]+)</p>\s+</td>", html_text)
         info['id'] = orderUserId.group(1)
+
+        if not fileOrHttp and not bool(info):
+            cls.htmlFileSave.save_html(OrderId, html_text)
         return info
 
 
@@ -178,7 +183,8 @@ class SportHall:
         try:
             res = gymHall.bootIt(
                 target_date, testTimeItem, cls.testOpenId.info)
-        except:
+        except Exception as e:
+            print(e)
             return ''
         if res['result']:
             cls.testOpenId.cancelBook(res['book_id'])

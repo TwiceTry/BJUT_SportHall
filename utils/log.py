@@ -27,11 +27,23 @@ class HTMLFileStorage:
     def __init__(self, directory:str):
         self.directory = Path(directory)
 
-    def is_existed(self, filename:str):
+    def is_existed(self, filename:str)->bool:
         file_path = self.directory / filename
         return file_path.exists()
 
-    def save_html(self, filename:str, html_content:str):
+    def getOrderIds(self):
+        OrderIdList = [ self.nameToOderId(fileName.name) for fileName in self.directory.glob('*.html')]
+        OrderIdList.sort()
+        return OrderIdList
+
+    def mkName(self,OrderId:str)->str:
+        return f'order_{OrderId}.html'
+    
+    def nameToOderId(self,fileName:str)->str:
+        return fileName.split('_')[1].split('.')[0]
+
+    def save_html(self, OrderId:str, html_content:str):
+        filename = self.mkName(OrderId)
         # 创建目录（如果不存在）
         self.directory.mkdir(parents=True, exist_ok=True)
 
@@ -42,7 +54,8 @@ class HTMLFileStorage:
         with open(file_path, 'w') as file:
             file.write(html_content)
 
-    def get_html(self, filename: str):
+    def get_html(self, OrderId: str):
+        filename = self.mkName(OrderId)
         file_path = self.directory / filename
         if file_path.exists():
             return file_path.read_text()

@@ -7,3 +7,4 @@ test_main.py
 task.json
 task.json.bak
 order.json
+test_openid.json

@@ -12,14 +12,13 @@ from urllib.parse import quote
 
 import utils.Useragent as Useragent
 
-from utils.log import HTMLFileStorage
+from utils.log import HTMLFileStorage,JSONHandler
 
 # 匹配中文字符和常见标点符号的正则表达式
 chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\u2022"
 
 host: str = "http://wechartdemo.zckx.net"
-# 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
-test_openid: str = "test opnid"
+
 
 # 创建一个Session对象，并设置代理
 requests = requests.Session()
@@ -156,7 +155,9 @@ class SportHall:
                 Halls.append(newone)
         return Halls.copy()
 
-    testOpenId: SportUser = SportUser(test_openid)
+    testOpenIdJsonHandler = JSONHandler('test_openid.json')
+    # 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
+    testOpenId: SportUser = SportUser(testOpenIdJsonHandler.get_value('testOpenId'))
 
     @classmethod
     def getHallByName(cls, name: str) -> typing.Union['SportHall', None]:

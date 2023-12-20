@@ -1,15 +1,18 @@
+import json
+from pathlib import Path
 import logging
 
-def getlogger(level=logging.DEBUG,format="%(asctime)s %(name)s %(levelname)s %(message)s",dateformat='%Y-%m-%d  %H:%M:%S %a ',logfile="log.txt"):
+
+def getlogger(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s", dateformat='%Y-%m-%d  %H:%M:%S %a ', logfile="log.txt"):
     mylog = logging.RootLogger(level)  # logging.Logger(name='my',level='INFO')
     if format:
-        LOG_FORMAT=format
+        LOG_FORMAT = format
     if dateformat:
-        DATE_FORMAT=dateformat
+        DATE_FORMAT = dateformat
     if logfile:
-        LOG_FILE=logfile
+        LOG_FILE = logfile
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
-    fh = logging.FileHandler(LOG_FILE,encoding='utf-8')
+    fh = logging.FileHandler(LOG_FILE, encoding='utf-8')
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
 
@@ -21,28 +24,28 @@ def getlogger(level=logging.DEBUG,format="%(asctime)s %(name)s %(levelname)s %(m
     mylog.addHandler(ch)
     return mylog
 
-from pathlib import Path
 
 class HTMLFileStorage:
-    def __init__(self, directory:str):
+    def __init__(self, directory: str):
         self.directory = Path(directory)
 
-    def is_existed(self, filename:str)->bool:
+    def is_existed(self, filename: str) -> bool:
         file_path = self.directory / filename
         return file_path.exists()
 
     def getOrderIds(self):
-        OrderIdList = [ self.nameToOderId(fileName.name) for fileName in self.directory.glob('*.html')]
+        OrderIdList = [self.nameToOderId(fileName.name)
+                       for fileName in self.directory.glob('*.html')]
         OrderIdList.sort()
         return OrderIdList
 
-    def mkName(self,OrderId:str)->str:
+    def mkName(self, OrderId: str) -> str:
         return f'order_{OrderId}.html'
-    
-    def nameToOderId(self,fileName:str)->str:
+
+    def nameToOderId(self, fileName: str) -> str:
         return fileName.split('_')[1].split('.')[0]
 
-    def save_html(self, OrderId:str, html_content:str):
+    def save_html(self, OrderId: str, html_content: str):
         filename = self.mkName(OrderId)
         # 创建目录（如果不存在）
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -62,9 +65,9 @@ class HTMLFileStorage:
         else:
             return None
 
-import json 
+
 class JSONHandler:
-    def __init__(self, file_path):
+    def __init__(self, file_path, default={}):
         self.file_path = Path(file_path)
         # 检查文件是否存在，如果不存在则创建新文件
         if not self.file_path.exists():
@@ -77,7 +80,7 @@ class JSONHandler:
 
     def write_json(self, data):
         with self.file_path.open('w') as file:
-            json.dump(data, file, indent=4, ensure_ascii=False,sort_keys=True)
+            json.dump(data, file, indent=4, ensure_ascii=False, sort_keys=True)
 
     def get_value(self, key):
         data = self.read_json()

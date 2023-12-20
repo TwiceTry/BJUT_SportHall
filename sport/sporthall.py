@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 import utils.Useragent as Useragent
 
-from utils.log import HTMLFileStorage,JSONHandler
+from utils.log import HTMLFileStorage, JSONHandler
 
 # 匹配中文字符和常见标点符号的正则表达式
 chinesePattern = r"\u4e00-\u9fff\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\u2022"
@@ -157,7 +157,8 @@ class SportHall:
 
     testOpenIdJsonHandler = JSONHandler('test_openid.json')
     # 一个可预约的账号openid，仅用来测试是否开放预约，会产生预约及取消记录
-    testOpenId: SportUser = SportUser(testOpenIdJsonHandler.get_value('testOpenId'))
+    testOpenId: SportUser = SportUser(
+        testOpenIdJsonHandler.get_value('testOpenId'))
 
     @classmethod
     def getHallByName(cls, name: str) -> typing.Union['SportHall', None]:
@@ -421,19 +422,26 @@ def bookTask(task):
         task.Hall = SportHall.getHallByName(task.Hall)
 
     res_list = []
-    testTimes = 5
-    for i in range(testTimes):
-        res = SportHall.testOrder()
-        if res:
+    cheapHours = [hour for hour in range(13, 18)]
+    targetHours = [(cheapHours[i], cheapHours[i+1])
+                   for i in range(0, len(cheapHours)-1)]
+    for i in cheapHours:
+        targetHours.append((i,))
+    targetHours.insert(0, tuple(task.target_time))
+    targetHours = list(set(targetHours))
+    testTimes = 0
+    for targetTime in targetHours:
+        timeInfo = task.Hall.getValidTimeInfo(task.target_date)
+
+        a = task.Hall.filterTimeInfo(targetTime, timeInfo)
+        if len(a):
+            res = task.Hall.bootIt(
+                task.target_date, random.choice(a), task.openid.info, result_list=res_list)
+            testTimes += 1
+        else:
+            continue
+
+        res_list.append(f'testTimes is {testTimes}')
+        task.result = res_list
+        if res['result']:
             break
-    if i == testTimes-1:
-        res_list.append(f'testTimes is {i}')
-
-    timeInfo = task.Hall.getValidTimeInfo(task.target_date)
-
-    a = task.Hall.filterTimeInfo(task.target_time, timeInfo)
-    if len(a):
-        res = task.Hall.bootIt(
-            task.target_date, random.choice(a), task.openid.info, result_list=res_list)
-
-    task.result = res_list

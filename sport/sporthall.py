@@ -413,7 +413,6 @@ class SportHall:
 
 
 def bookTask(task):
-
     if isinstance(task.openid, str):
         task.openid = SportUser(task.openid)
     if task.openid not in SportUser.openidCollect:
@@ -422,26 +421,36 @@ def bookTask(task):
         task.Hall = SportHall.getHallByName(task.Hall)
 
     res_list = []
-    cheapHours = [hour for hour in range(13, 18)]
-    targetHours = [(cheapHours[i], cheapHours[i+1])
-                   for i in range(0, len(cheapHours)-1)]
-    for i in cheapHours:
-        targetHours.append((i,))
-    targetHours.insert(0, tuple(task.target_time))
-    targetHours = list(set(targetHours))
+    cheapHours = [hour for hour in range(12, 18)]
+    targetHours = [tuple(task.target_time)]
+    [targetHours.append((cheapHours[i], cheapHours[i+1]))
+     for i in range(0, len(cheapHours)-1)
+     if (cheapHours[i], cheapHours[i+1]) not in targetHours]
+    [targetHours.append((i,))
+     for i in cheapHours
+     if (i,) not in targetHours]
+
     testTimes = 0
     for targetTime in targetHours:
-        timeInfo = task.Hall.getValidTimeInfo(task.target_date)
-
+        res_list.append(f"try target hour:{targetTime}")
+        timeInfo = task.Hall.getValidTimeInfo(task.target_date, f5=True)
+        if len(timeInfo) == 0:
+            res_list.append(
+                f"{SportHall.dateLimit(task.target_date)} has no timeInfo")
         a = task.Hall.filterTimeInfo(targetTime, timeInfo)
         if len(a):
             res = task.Hall.bootIt(
                 task.target_date, random.choice(a), task.openid.info, result_list=res_list)
             testTimes += 1
         else:
+            res_list.append(f"no target hour:{targetTime} left")
             continue
 
-        res_list.append(f'testTimes is {testTimes}')
-        task.result = res_list
         if res['result']:
+            res_list.append(
+                f"successfully book target hour:{targetTime}, orderId is {res['book_id']}")
             break
+        else:
+            res_list.append(f"failed to  book target hour:{targetTime}")
+    res_list.append(f'test book times is {testTimes}')
+    task.result = res_list

@@ -115,7 +115,7 @@ class SportUser(object):
             r"<td><b>身份证</b></td>\s+<td>\s+<p>([DT\w\d\*X]+)</p>\s+</td>", html_text)
         info['id'] = orderUserId.group(1)
 
-        if not fileOrHttp and not bool(info):
+        if not fileOrHttp and bool(info):
             cls.htmlFileSave.save_html(OrderId, html_text)
         return info
 
@@ -303,8 +303,11 @@ class SportHall:
 
         return dict_info
 
-    def getValidTimeInfo(self, day: day_type, f5=False) -> typing.List[dict]:
-        dict_info = self.getTimeInfo(day=day, f5=f5)
+    def getValidTimeInfo(self, day: day_type, timeInfo: dict = None, f5=False) -> typing.List[dict]:
+        if not timeInfo:
+            dict_info = self.getTimeInfo(day=day, f5=f5)
+        else:
+            dict_info = timeInfo
 
         valid_list = []
         if self.reserveUrl == '':
@@ -393,10 +396,14 @@ class SportHall:
                 "sellerNo": "weixin",
             })
         }
-
-        res = requests.post(url=host + "/Ticket/SaveOrder", data=post_data,
-                            headers={'User-Agent': Useragent.random_one()}, timeout=(3, 3)
-                            )
+        try:
+            res = requests.post(url=host + "/Ticket/SaveOrder", data=post_data,
+                                headers={'User-Agent': Useragent.random_one()}, timeout=(1, 1)
+                                )
+        except TimeoutError:
+            result = {'result': False,
+                      'message': "timeout", 'book_id': ''}
+            return result
 
         res_dict = json.loads(res.text)
         result = {}
@@ -407,8 +414,8 @@ class SportHall:
             else:
                 result = {'result': False,
                           'message': res_dict["Message"], 'book_id': ''}
-        if not (result_list is None) and res_dict:
-            result_list.append(result)
+        # if not (result_list is None) and res_dict:
+        #     result_list.append(result)
         return result
 
 

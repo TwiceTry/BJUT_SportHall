@@ -10,6 +10,8 @@ if __name__ == "__main__":
             SportUser.openidCollect.add(SportUser(task.openid))
             task.Hall = SportHall.getHallByName(task.Hall)
             task.Hall.getTimeInfo(task.target_date)
+            task.result = [
+                f"successfully get target date: {task.Hall.day2date(task.target_date)} timeinfo "]
 
     @aa.afterDone
     def afterdo():
@@ -54,6 +56,6 @@ if __name__ == "__main__":
                 res_list.append(
                     f"failed to  book {fString}")
         res_list.append(f'test book times is {testTimes}')
-        task.result = res_list
+        task.result += res_list
 
     aa.run()

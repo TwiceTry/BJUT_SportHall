@@ -9,6 +9,7 @@ import inspect
 
 from dataclasses import dataclass, field
 from urllib.parse import quote
+from requests.exceptions import Timeout
 
 import utils.Useragent as Useragent
 
@@ -64,7 +65,13 @@ class SportUser(object):
     def getUserInfo(self):
         fake_header = {'User-Agent': Useragent.random_one()}
         info_url = host + "/Ticket/MySelf_Info?openId=" + self.openid
-        res = requests.get(url=info_url, headers=fake_header)
+        for _ in range(3):
+            try:
+                res = requests.get(url=info_url, headers=fake_header)
+            except ConnectionError:
+                continue
+        if _ == 3:
+            return
         name = re.search(r"value=\"([\u4E00-\u9FFF]+)\"", res.text)
         phone_num = re.search(r"value=\"(\d{11})\"", res.text)
         people_id = re.search(r"value=\"(\d{17}\d|X)\"", res.text)
@@ -400,7 +407,7 @@ class SportHall:
             res = requests.post(url=host + "/Ticket/SaveOrder", data=post_data,
                                 headers={'User-Agent': Useragent.random_one()}, timeout=(1, 1)
                                 )
-        except TimeoutError:
+        except Timeout:
             result = {'result': False,
                       'message': "timeout", 'book_id': ''}
             return result

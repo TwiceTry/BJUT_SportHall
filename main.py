@@ -24,7 +24,7 @@ if __name__ == "__main__":
         if task.openid not in SportUser.openidCollect:
             SportUser.openidCollect.add(task.openid)
         if isinstance(task.Hall, str):
-            task.Hall = SportHall.getHallByName(task.Hall)
+            task.Hall: SportHall = SportHall.getHallByName(task.Hall)
 
         res_list = []
         timeInfo = task.Hall.getTimeInfo(task.target_date, ValidTime=5*60)
